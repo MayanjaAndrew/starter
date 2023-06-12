@@ -1,36 +1,28 @@
 const Tour = require('../models/tourModel');
+const APIFeatures = require('../utils/apiFeatures');
 
-//const tours = JSON.parse(
-//fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)
+// const tours = JSON.parse(
+// fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)
 //);
+
+// Middle ware
+exports.aliasTopTours = (req, res, next) => {
+  req.query.limit = '5';
+  req.query.sort = '-ratingsAverage,price';
+  req.query.fields = 'name,price,ratingsAverage,summary,difficulty';
+  next();
+};
 
 exports.getAllTours = async (req, res) => {
   try {
-    // BUILD QUERY
-    // 1) Filtering
-    const queryObj = { ...req.query };
-    const excludedFields = ['page', 'sort', 'limit', 'fields'];
-    excludedFields.forEach((el) => delete queryObj[el]);
-    //console.log(req.query, queryObj);
-
-    // 2) Advanced filtering, allows greater than, less than etc
-    let queryStr = JSON.stringify(queryObj);
-    // The $ sign is lost so we need to impose it with match, gte{greater or equal} gt{greater than}, lte{less than or equal}
-    // \b matches specific word
-    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
-    console.log(JSON.parse(queryStr));
-
-    const query = await Tour.find(JSON.parse(queryStr));
-
-    //Tour.find() returns all
-    //const tours = await Tour.find()
-    //  .where('duration')
-    //  .equals(5)
-    //  .where('difficulty')
-    //  .equals('easy');
-
     // EXECUTE QUERY
-    const tours = await query;
+    // find() creates query
+    const features = new APIFeatures(Tour.find(), req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+    const tours = await features.query;
 
     // SEND RESPONSE
     res.status(200).json({
